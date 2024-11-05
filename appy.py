@@ -138,3 +138,6 @@ with ui.layout_columns():
             ax.set_xlabel("flipper_length_mm")
             ax.set_ylabel("Count")
             return ax
+@reactive.calc
+def filtered_data():
+    return penguins_df
