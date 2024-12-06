@@ -1,160 +1,114 @@
-import plotly.express as px
-from shiny.express import input, ui
-from shiny import render
-from shinywidgets import render_plotly
-from palmerpenguins import load_penguins
-from shinywidgets import output_widget, render_widget, render_plotly
+#Imports necessary libraries and dependencies
 import seaborn as sns
-from shiny import render 
-import palmerpenguins
+from faicons import icon_svg # provide Icons for display like a penguin figure or a sun 
+
 from shiny import reactive
+from shiny.express import input, render, ui
+import palmerpenguins 
 
-penguins_df = palmerpenguins.load_penguins()
+df = palmerpenguins.load_penguins()
 
-with ui.layout_columns():
-    with ui.card():
-        " Penguin Data Table "
-        @render.data_frame
-        def penguinstable_df():
-            return render.DataTable(filtered_data(), filters=False,selection_mode='row')
-        
-
-    with ui.card():
-        "Penguins Data Grid"
-        @render.data_frame
-        def penguinsgrid_df():
-            return render.DataGrid(filtered_data(), filters=False, selection_mode="row")
+ui.page_opts(title="Penguins dashboard", fillable=True)
 
 
-with ui.sidebar(open="open"):
-    ui.h2("Sidebar")
-    ui.input_selectize("selected_attribute",
-                       "Penguin Metric",
-                       ["bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g"])
-
-    ui.input_numeric(
-        "plotly_bin_count",
-        "Plotly Number of Bins",
-        20
-    )
-
-    ui.input_slider(
-        "seaborn_bin_count",
-        "Seaborn Number of Bins",
-        1,20,10
-    )
-
+with ui.sidebar(title="Filter controls"):
+    ui.input_slider("mass", "Mass", 2000, 6000, 6000)
     ui.input_checkbox_group(
-        "selected_species_list",
+        "species",
         "Species",
-        ["Adelie","Gentoo","Chinstrap"],
-        selected=["Adelie","Gentoo","Chinstrap"],
-        inline=False
+        ["Adelie", "Gentoo", "Chinstrap"],
+        selected=["Adelie", "Gentoo", "Chinstrap"],
     )
-
     ui.hr()
-
+    ui.h6("Links")
     ui.a(
-        "GitHub",
-        href= "https://github.com/Thilde02/cintel-02-data.git",
-        target="_blank"
+        "GitHub Source",
+        href="https://github.com/denisecase/cintel-07-tdash",
+        target="_blank",
+    )
+    ui.a(
+        "GitHub App",
+        href="https://denisecase.github.io/cintel-07-tdash/",
+        target="_blank",
+    )
+    ui.a(
+        "GitHub Issues",
+        href="https://github.com/denisecase/cintel-07-tdash/issues",
+        target="_blank",
+    )
+    ui.a("PyShiny", href="https://shiny.posit.co/py/", target="_blank")
+    ui.a(
+        "Template: Basic Dashboard",
+        href="https://shiny.posit.co/py/templates/dashboard/",
+        target="_blank",
+    )
+    ui.a(
+        "See also",
+        href="https://github.com/denisecase/pyshiny-penguins-dashboard-express",
+        target="_blank",
     )
 
-ui.page_opts(title="Tiffany's Penguin Data playground", fillable=True)
+
+with ui.layout_column_wrap(fill=False):
+    with ui.value_box(showcase=icon_svg("earlybirds")):
+        "Number of  total penguins"
+
+        @render.text
+        def count():
+            return filtered_df().shape[0]
+
+    with ui.value_box(showcase=icon_svg("ruler-horizontal")):
+        "Average bill length"
+
+        @render.text
+        def bill_length():
+            return f"{filtered_df()['bill_length_mm'].mean():.1f} mm"
+
+    with ui.value_box(showcase=icon_svg("ruler-vertical")):
+        "Average bill depth"
+
+        @render.text
+        def bill_depth():
+            return f"{filtered_df()['bill_depth_mm'].mean():.1f} mm"
+
+
 with ui.layout_columns():
+    with ui.card(full_screen=True):
+        ui.card_header("Bill: length and depth")
 
-    @render_plotly
-    def plot1():
-
-        fig = px.histogram(
-            penguins_df,
-            x="bill_length_mm",
-            title="Penguins Bill Length Histogram",
-            color_discrete_sequence=["orange"],
-        )
-        fig.update_traces(marker_line_color="black", marker_line_width=2)
-        return fig
-
-    @render_plotly
-   
-    def plot2():
-        selected_attribute = input.selected_attribute()
-        bin_count = input.plotly_bin_count()
-        
-        fig = px.histogram(
-            filtered_data(),
-            x=selected_attribute,
-            nbins=bin_count,
-            title=f"Penguins {selected_attribute} Histogram",
-            color_discrete_sequence=["black"], 
-        )
-        fig.update_traces(marker_line_color="white", marker_line_width=2)
-        return fig
-
-with ui.card(full_screen=True):
-
-    ui.card_header("Plotly Scatterplot: Species")
-    @render_plotly
-    def plotly_scatterplot():
-        filtered_penguins = filtered_data()[
-                penguins_df["species"].isin(input.selected_species_list())
-            ]
-        fig = px.scatter(
-                filtered_penguins,
-                x="body_mass_g",
-                y="flipper_length_mm",
-                color="species",
-                title="Penguins Scatterplot: Body Mass vs. Flipper Length",
-                labels={
-                    "body_mass_g": "Body Mass (g)",
-                    "flipper_length_mm": "Flipper Length (mm)",
-                },
+        @render.plot
+        def length_depth():
+            # This function creates a scatter plot showing the relationship between bill length 
+  (x-axis) and bill depth (y-axis) colored by penguin species. The data is filtered 
+  based on user selections from the sidebar controls.
+            return sns.scatterplot(
+                data=filtered_df(),
+                x="bill_length_mm",
+                y="bill_depth_mm",
+                hue="species",
             )
-        return fig
-    
-    @render_plotly
-    def density_plot():
-        filtered_penguins = filtered_data()[
-            filtered_datat()["species"].isin(input.selected_species_list())
-        ]
-        fig = px.density_contour(
-            filtered_penguins,
-            
-            x="bill_length_mm",
-            y="bill_depth_mm",
-            color="species",
-            title="Density Plot: Bill Length vs Bill Depth by Species",
-            labels={
-                "bill_length_mm": "Bill Length (mm)",
-                "bill_depth_mm": "Bill Depth (mm)"
-            }
-        )
-        return fig
 
-with ui.layout_columns():
-    with ui.card():
-        @render.plot(alt="Seaborn Histogram")
-        def plot():
-            ax=sns.histplot(data=penguins_df,x="flipper_length_mm",bins=input.seaborn_bin_count())
-            ax.set_title("Seaborn: Palmer Penguins")
-            ax.set_xlabel("flipper_length_mm")
-            ax.set_ylabel("Count")
-            return ax
+    with ui.card(full_screen=True):
+        ui.card_header("Penguin Data")
+
+        @render.data_frame
+        def summary_statistics():
+            cols = [
+                "species",
+                "island",
+                "bill_length_mm",
+                "bill_depth_mm",
+                "body_mass_g",
+            ]
+            return render.DataGrid(filtered_df()[cols], filters=True)
+
+
+#ui.include_css(app_dir / "styles.css")
+
 
 @reactive.calc
-def filtered_data():
-    return penguins_df
+def filtered_df():
+    filt_df = df[df["species"].isin(input.species())]
+    filt_df = filt_df.loc[filt_df["body_mass_g"] < input.mass()]
+    return filt_df
 
-#Data Table and Data Grid
-with ui.layout_columns():
-    with ui.card(full_screen=True):
-        ui.h2("Penguin Data Table")
-        @render.data_frame
-        def penguins_datatable():
-            return render.DataTable(filtered_data())
-
-    with ui.card(full_screen=True):
-        ui.h2("Penguin Data Grid")
-        @render.data_frame
-        def penguins_datagrid():
-            return render.DataGrid(filtered_data())
